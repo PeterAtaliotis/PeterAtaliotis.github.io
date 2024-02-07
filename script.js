@@ -1,61 +1,69 @@
-window.onload = () => {
-    const button = document.querySelector('button[data-action="change"]');
-    button.innerText = 'Change Model';
 
-    renderPlaces();
+// getting places from APIs
+function loadPlaces(position) {
+    const params = {
+        radius: 300,    // search places not farther than this value (in meters)
+        clientId: 'G0RPMWWAFWRA4KGQMCMEKA2KTIOCECEVN2D45GYKH2J34CIA',
+        clientSecret: 'KABFYC02QMUFWGXYKRNTYJYLIVTOH2Z2A0RLS2F1PGT1CKL4',
+        version: '20300101',    // foursquare versioning, required but unuseful for this demo
+    };
+
+    // CORS Proxy to avoid CORS problems
+    const corsProxy = 'https://cors-anywhere.herokuapp.com/';
+
+    // Foursquare API (limit param: number of maximum places to fetch)
+    const endpoint = `${corsProxy}https://api.foursquare.com/v2/venues/search?intent=checkin
+        &ll=${position.latitude},${position.longitude}
+        &radius=${params.radius}
+        &client_id=${params.clientId}
+        &client_secret=${params.clientSecret}
+        &limit=30 
+        &v=${params.version}`;
+    return fetch(endpoint)
+        .then((res) => {
+            return res.json()
+                .then((resp) => {
+                    return resp.response.venues;
+                })
+        })
+        .catch((err) => {
+            console.error('Error with places API', err);
+        })
 };
 
-var models = [
-    {
-        url: './assets/magnemite/scene.gltf',
-        scale: '0.5 0.5 0.5',
-        info: 'Magnemite, Lv. 5, HP 10/10',
-        rotation: '0 180 0',
+
+window.onload = () => {
+    const scene = document.querySelector('a-scene');
+
+    // first get current user location
+    return navigator.geolocation.getCurrentPosition(function (position) {
+
+        // than use it to load from remote APIs some places nearby
+        loadPlaces(position.coords)
+            .then((places) => {
+                places.forEach((place) => {
+                    const latitude = place.location.lat;
+                    const longitude = place.location.lng;
+
+                    // add place name
+                    const placeText = document.createElement('a-link');
+                    placeText.setAttribute('gps-entity-place', `latitude: ${latitude}; longitude: ${longitude};`);
+                    placeText.setAttribute('title', place.name);
+                    placeText.setAttribute('scale', '15 15 15');
+                    
+                    placeText.addEventListener('loaded', () => {
+                        window.dispatchEvent(new CustomEvent('gps-entity-place-loaded'))
+                    });
+
+                    scene.appendChild(placeText);
+                });
+            })
     },
-    {
-        url: './assets/articuno/scene.gltf',
-        scale: '0.2 0.2 0.2',
-        rotation: '0 180 0',
-        info: 'Articuno, Lv. 80, HP 100/100',
-    },
-    {
-        url: './assets/dragonite/scene.gltf',
-        scale: '0.08 0.08 0.08',
-        rotation: '0 180 0',
-        info: 'Dragonite, Lv. 99, HP 150/150',
-    },
-];
-
-var modelIndex = 0;
-
-function renderPlaces() {
-    let scene = document.querySelector('a-scene');
-    scene.addEventListener('loaded', function () {
-        let camera = document.querySelector('a-camera');
-        placeModelInFront(camera, models[modelIndex]);
-    });
-
-    document.querySelector('button[data-action="change"]').addEventListener('click', function () {
-        modelIndex = (modelIndex + 1) % models.length;
-        let camera = document.querySelector('a-camera');
-        placeModelInFront(camera, models[modelIndex]);
-    });
-}
-
-function placeModelInFront(camera, model) {
-    let modelEntity = document.createElement('a-entity');
-    modelEntity.setAttribute('gltf-model', model.url);
-    modelEntity.setAttribute('scale', model.scale);
-    modelEntity.setAttribute('rotation', model.rotation);
-    modelEntity.setAttribute('position', '0 0 -7'); // Place 3 meters in front of the camera
-    modelEntity.setAttribute('animation-mixer', '');
-
-    const div = document.querySelector('.instructions');
-    div.innerText = model.info;
-
-    // Remove existing models to replace with the new model
-    const existingModels = document.querySelectorAll('a-entity[gltf-model]');
-    existingModels.forEach(m => m.parentNode.removeChild(m));
-
-    camera.parentNode.appendChild(modelEntity);
-}
+        (err) => console.error('Error in retrieving position', err),
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 27000,
+        }
+    );
+};
