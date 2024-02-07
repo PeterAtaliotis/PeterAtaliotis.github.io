@@ -47,7 +47,7 @@ function placeModelInFront(camera, model) {
     modelEntity.setAttribute('gltf-model', model.url);
     modelEntity.setAttribute('scale', model.scale);
     modelEntity.setAttribute('rotation', model.rotation);
-    modelEntity.setAttribute('position', '0 0 -3'); // Place 3 meters in front of the camera
+    modelEntity.setAttribute('position', '0 0 -7'); // Place 3 meters in front of the camera
     modelEntity.setAttribute('animation-mixer', '');
 
     const div = document.querySelector('.instructions');
