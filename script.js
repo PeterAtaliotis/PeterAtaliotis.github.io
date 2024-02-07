@@ -1,22 +1,9 @@
 window.onload = () => {
     const button = document.querySelector('button[data-action="change"]');
-    button.innerText = '﹖';
+    button.innerText = 'Change Model';
 
-    let places = staticLoadPlaces();
-    renderPlaces(places);
+    renderPlaces();
 };
-
-function staticLoadPlaces() {
-    return [
-        {
-            name: 'Pokèmon',
-            location: {
-                 lat: 54.5850947,
-                 lng: -5.931582,
-            },
-        },
-    ];
-}
 
 var models = [
     {
@@ -40,46 +27,35 @@ var models = [
 ];
 
 var modelIndex = 0;
-var setModel = function (model, entity) {
-    if (model.scale) {
-        entity.setAttribute('scale', model.scale);
-    }
 
-    if (model.rotation) {
-        entity.setAttribute('rotation', model.rotation);
-    }
+function renderPlaces() {
+    let scene = document.querySelector('a-scene');
+    scene.addEventListener('loaded', function () {
+        let camera = document.querySelector('a-camera');
+        placeModelInFront(camera, models[modelIndex]);
+    });
 
-    if (model.position) {
-        entity.setAttribute('position', model.position);
-    }
+    document.querySelector('button[data-action="change"]').addEventListener('click', function () {
+        modelIndex = (modelIndex + 1) % models.length;
+        let camera = document.querySelector('a-camera');
+        placeModelInFront(camera, models[modelIndex]);
+    });
+}
 
-    entity.setAttribute('gltf-model', model.url);
+function placeModelInFront(camera, model) {
+    let modelEntity = document.createElement('a-entity');
+    modelEntity.setAttribute('gltf-model', model.url);
+    modelEntity.setAttribute('scale', model.scale);
+    modelEntity.setAttribute('rotation', model.rotation);
+    modelEntity.setAttribute('position', '0 0 -3'); // Place 3 meters in front of the camera
+    modelEntity.setAttribute('animation-mixer', '');
 
     const div = document.querySelector('.instructions');
     div.innerText = model.info;
-};
 
-function renderPlaces(places) {
-    let scene = document.querySelector('a-scene');
+    // Remove existing models to replace with the new model
+    const existingModels = document.querySelectorAll('a-entity[gltf-model]');
+    existingModels.forEach(m => m.parentNode.removeChild(m));
 
-    places.forEach((place) => {
-        let latitude = place.location.lat;
-        let longitude = place.location.lng;
-
-        let model = document.createElement('a-entity');
-        model.setAttribute('gps-entity-place', `latitude: ${latitude}; longitude: ${longitude};`);
-
-        setModel(models[modelIndex], model);
-
-        model.setAttribute('animation-mixer', '');
-
-        document.querySelector('button[data-action="change"]').addEventListener('click', function () {
-            var entity = document.querySelector('[gps-entity-place]');
-            modelIndex++;
-            var newIndex = modelIndex % models.length;
-            setModel(models[newIndex], entity);
-        });
-
-        scene.appendChild(model);
-    });
+    camera.parentNode.appendChild(modelEntity);
 }
